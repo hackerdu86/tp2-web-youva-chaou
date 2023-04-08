@@ -1,11 +1,6 @@
 const Teacher = require("../models/teacher");
 const HttpError = require("../models/http-error");
-const ObjectId = require("mongoose").ObjectId;
 
-async function teacherExists(teacherID) {
-  let exists = await Teacher.exists({ _id: teacherID });
-  return exists;
-}
 
 async function addTeacher(req, res, next) {
   const { firstName, lastName, hiredDate } = req.body;
@@ -26,12 +21,29 @@ async function addTeacher(req, res, next) {
   }
 }
 
-module.exports = { teacherExists: teacherExists, addTeacher: addTeacher };
+async function getTeacher(req, res, next) {
+    const teacherId = req.params.id;
+    let teacherExist = await teacherExists(teacherId);
+    if (!teacherExist) {
+      next(new HttpError("Ce professeur n'existe pas", 404));
+    } else {
+      try {
+        const teacher = await Teacher.findById(teacherId);
+        res.json({ professeur: teacher.toObject({ getters: true }) });
+      } catch (err) {
+        console.log(err);
+        return next(
+          new HttpError("Erreur lors de la récupération du professeur", 500)
+        );
+      }
+    }
+}
 
-/**
- * _id: {type: mongoose.Types.ObjectId},
-    firstName: {type: String, required: true},
-    lastName: {type: String, required: true},
-    hiredDate: {type: Date, required: true},
-    teachedClassroomIds: [{type: mongoose.Types.ObjectId, required: false, ref:"Classroom"}],
- */
+//Usage functions
+async function teacherExists(teacherId) {
+    let exists = await Teacher.exists({ _id: teacherId });
+    return exists;
+  }
+
+  
+module.exports = { teacherExists: teacherExists, addTeacher: addTeacher, getTeacher: getTeacher };

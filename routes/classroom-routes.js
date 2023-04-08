@@ -3,8 +3,8 @@ const express = require("express");
 const classroomController = require("../controllers/classrooms-controller")
 const router = express.Router();
 
-//Actual routes
-router.post("/", classroomController.addClassroom); 
+router.post('/', classroomController.addClassroom); 
 
+router.get("/:id", classroomController.getClassroom);
 
 module.exports = router;

@@ -13,7 +13,7 @@ const app = express();
 
 app.use(bodyParser.json());
 
-app.use("/classes", classroomRoutes);
+app.use("/cours", classroomRoutes);
 app.use("/etudiants", studentRoutes);
 app.use("/professeurs", teacherRoutes);
 
