@@ -9,4 +9,6 @@ router.get("/:id", classroomController.getClassroom);
 
 router.patch("/:id", classroomController.modifyClassroom);
 
+router.delete("/:id", classroomController.deleteClassroom);
+
 module.exports = router;

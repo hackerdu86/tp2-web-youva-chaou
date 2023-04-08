@@ -2,7 +2,7 @@ const HttpError = require("../models/http-error");
 const teacherController = require("../controllers/teachers-controller");
 const Classroom = require("../models/classroom");
 const Student = require("../models/student");
-const classroom = require("../models/classroom");
+const Teacher = require("../models/teacher");
 
 //Controllers
 async function addClassroom(req, res, next) {
@@ -19,6 +19,22 @@ async function addClassroom(req, res, next) {
         studentIds: [],
       });
       await classroomToAdd.save();
+      try {
+        let teacher = await Teacher.findOneAndUpdate(
+          { _id: teacherId },
+          { $push: { teachedClassroomIds: classroomToAdd.id } }
+        );
+        teacher.teachedClassroomIds.push(classroomToAdd._id);
+      } catch (err) {
+        console.log(err);
+        return next(
+          new HttpError(
+            "Erreur lors de la récupération du professeur pour ajouter le cours",
+            500
+          )
+        );
+      }
+
       res
         .status(201)
         .json({ classe: classroomToAdd.toObject({ getters: true }) });
@@ -52,9 +68,7 @@ async function modifyClassroom(req, res, next) {
   const classroomId = req.params.id;
   let classroomExist = await classroomExists(classroomId);
   if (!classroomExist) {
-    next(
-      new HttpError("Ce cours ne peut être modifié, il n'existe pas", 404)
-    );
+    next(new HttpError("Ce cours ne peut être modifié, il n'existe pas", 404));
   } else {
     try {
       let classroom = await Classroom.findById(classroomId);
@@ -71,40 +85,53 @@ async function modifyClassroom(req, res, next) {
 }
 
 async function deleteClassroom(req, res, next) {
-  const classroomId = requete.params.classroomId;
-  let classroom;
-  try {
-    classroom = await Classroom.findById(classroomId).populate("createur");
-  } catch {
-    return next(
-      new HttpErreur("Erreur lors de la suppression de la place", 500)
-    );
-  }
-  if (!place) {
-    return next(new HttpErreur("Impossible de trouver la place", 404));
-  }
+  const classroomId = req.params.id;
+  let classroomExist = await classroomExists(classroomId);
 
-  try {
-    await place.remove();
-    place.createur.places.pull(place);
-    await place.createur.save();
-  } catch {
-    return next(
-      new HttpErreur("Erreur lors de la suppression de la place", 500)
-    );
+  if (!classroomExist) {
+    return next(new HttpError("Le cours en question n'existe pas", 204));
+  } else {
+    try {
+      let classroomTeacherId = await Classroom.findById(classroomId);
+      classroomTeacherId = classroomTeacherId.id;
+      Classroom.deleteOne({ _id: classroomId });
+      try {
+        let classroomTeacher = await Teacher.findById(classroomTeacherId);
+        classroomTeacher.teachedClassroomIds = classroomTeacher.teachedClassroomIds.filter((id) => {
+          return id !== classroomId;
+        });
+        classroomTeacher.save();
+      } catch (err) {
+        new HttpError(
+          "Erreur lors de la récupération du professeur qui enseigne le cours",
+          500
+        );
+      }
+      try {
+        let registeredStudents = await Student.find({
+          registeredClassroomIds: { $in: { classroomId } },
+        });
+        registeredStudents.registeredClassroomIds =
+          classroomTeacher.teachedClassroomIds.filter((classroomIds) => {
+            return classroomIds !== classroomId;
+          });
+        registeredStudents.save();
+      } catch (err) {
+        console.log(err);
+        new HttpError(
+          "Erreur lors des étudiants qui sont inscrits à ce courss",
+          500
+        );
+      }
+      res.status(200).json({ message: "Cours supprimé" });
+    } catch (err) {
+      console.log(err);
+      new HttpError("Erreur lors de la suppression du cours", 500);
+    }
   }
-  reponse.status(200).json({ message: "Place supprimée" });
 }
-
-async function deleteClassroomLocal(classroomId) {}
 
 //Usage functions
-async function removeStudentFromStudentLists(studentID) {
-  const classesWithStudentInscribed = await Classroom.find({
-    studentIDs: { $in: { studentID } },
-  }).exec();
-  console.log(classesWithStudentInscribed);
-}
 async function classroomExists(classroomID) {
   let exists = await Classroom.exists({ _id: classroomID });
   return exists;
