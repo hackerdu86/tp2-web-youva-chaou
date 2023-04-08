@@ -4,9 +4,7 @@ const classroomController = require("../controllers/classrooms-controller")
 const router = express.Router();
 
 //Actual routes
-router.get("/", (req, res) => {
-    res.send({"Hey":"Man"});
-});
+router.post("/", classroomController.addClassroom); 
 
 
 module.exports = router;

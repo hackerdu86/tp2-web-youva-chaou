@@ -5,4 +5,6 @@ const router = express.Router();
 
 //Actual routes
 
+router.post("/", teacherController.addTeacher)
+
 module.exports = router;

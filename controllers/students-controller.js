@@ -1,3 +1,9 @@
-const { v4: uuidv4 } = require("uuid");
+const Student = require("../models/student");
 
-module.exports = {};
+
+async function addStudent(req, res, next) {
+
+}
+
+
+module.exports = {addStudent: addStudent};
