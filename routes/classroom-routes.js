@@ -7,4 +7,6 @@ router.post('/', classroomController.addClassroom);
 
 router.get("/:id", classroomController.getClassroom);
 
+router.patch("/:id", classroomController.modifyClassroom);
+
 module.exports = router;

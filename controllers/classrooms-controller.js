@@ -47,7 +47,28 @@ async function getClassroom(req, res, next) {
   }
 }
 
-async function modifyClassroom(req, res, next) {}
+async function modifyClassroom(req, res, next) {
+  const { title, discipline } = req.body;
+  const classroomId = req.params.id;
+  let classroomExist = await classroomExists(classroomId);
+  if (!classroomExist) {
+    next(
+      new HttpError("Ce cours ne peut être modifié, il n'existe pas", 404)
+    );
+  } else {
+    try {
+      let classroom = await Classroom.findById(classroomId);
+      classroom.title = title;
+      classroom.discipline = discipline;
+      await classroom.save();
+      res.status(201).json({ modified: true });
+    } catch {
+      return next(
+        new HttpErreur("Erreur lors de la mise à jour du cours", 500)
+      );
+    }
+  }
+}
 
 async function deleteClassroom(req, res, next) {
   const classroomId = requete.params.classroomId;
