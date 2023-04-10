@@ -1,7 +1,7 @@
 const Teacher = require("../models/teacher");
 const Classroom = require("../models/classroom");
+const Student = require("../models/student");
 const HttpError = require("../models/http-error");
-const teacher = require("../models/teacher");
 const classroomsController = require("./classrooms-controller");
 let ObjectId = require("mongoose").Types.ObjectId;
 
@@ -102,12 +102,10 @@ async function addClassroomToTeacher(req, res, next) {
           new HttpError("Erreur lors de la création du nouveau cours", 500)
         );
       }
-      res
-        .status(200)
-        .json({
-          message:
-            "Cours créé et ajouté à la liste des cours enseigné du professeur",
-        });
+      res.status(200).json({
+        message:
+          "Cours créé et ajouté à la liste des cours enseigné du professeur",
+      });
     } catch (err) {
       console.log(err);
       return next(
@@ -120,7 +118,60 @@ async function addClassroomToTeacher(req, res, next) {
   }
 }
 
-async function deleteTeacher(req, res, next) {}
+async function deleteTeacher(req, res, next) {
+  const teacherId = req.params.id;
+  let teacherExist = teacherExists(teacherId);
+  if (!teacherExist) {
+    return next(new HttpError("Le professeur n'existe pas"), 500);
+  } else {
+    try {
+      let teacher = await Teacher.findById(teacherId);
+      const teachedClassroomsIds = teacher.teachedClassroomIds;
+      for (let i = 0; i < teachedClassroomsIds.length; i++) {
+        let classroomId = teachedClassroomsIds[i];
+        await Student.updateMany(
+          { registeredClassroomIds: classroomId },
+          { $pull: { registeredClassroomIds: classroomId } }
+        );
+      }
+      try {
+        for (let i = 0; i < teachedClassroomsIds.length; i++) {
+          let classroomId = teachedClassroomsIds[i];
+          await Classroom.deleteOne({ _id: classroomId });
+        }
+        try {
+          await Teacher.deleteOne({ _id: teacherId });
+          res.status(200).json({
+            message:
+              "Le professeur a bien été supprimé ainsi que les cours qu'il enseignait",
+          });
+        } catch (err) {
+          console.log(err);
+          return next(
+            new HttpError("Erreur lors de la suppression du professeurs"),
+            500
+          );
+        }
+      } catch (err) {
+        console.log(err);
+        return next(
+          new HttpError(
+            "Erreur lors de la suppression des cours du professeurs"
+          ),
+          500
+        );
+      }
+    } catch (err) {
+      console.log(err);
+      return next(
+        new HttpError(
+          "Erreur lors de la suppression des cours dans les listes des étudiants au moins un des cours donné par ce professeur",
+          500
+        )
+      );
+    }
+  }
+}
 
 //Usage functions
 async function teacherExists(teacherId) {

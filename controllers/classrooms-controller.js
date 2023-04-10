@@ -91,25 +91,13 @@ async function modifyClassroom(req, res, next) {
 
 async function deleteClassroom(req, res, next) {
   const classroomId = req.params.id;
-  let classroomExist = false;
-  try {
-    classroomExist = await classroomExists(classroomId);
-  } catch (err) {
-    console.log(err);
-    return next(
-      new HttpError(
-        "Erreur lors de la vérification de l'existance du professeur du cours",
-        500
-      )
-    );
-  }
+  let classroomExist = await classroomExists(classroomId);
   if (!classroomExist) {
-    return next(new HttpError("Le cours en question n'existe pas", 204));
+    return next(new HttpError("Le cours en question n'existe pas", 500));
   } else {
     try {
       let classroomTeacherId = await Classroom.findById(classroomId);
       classroomTeacherId = classroomTeacherId.teacherId;
-      console.log(classroomTeacherId);
       await Classroom.deleteOne({ _id: classroomId });
       try {
         await Teacher.findOneAndUpdate({_id: classroomTeacherId}, {$pull: {teachedClassroomIds: classroomId}});

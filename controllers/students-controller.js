@@ -1,6 +1,7 @@
 const Student = require("../models/student");
 const Classroom = require("../models/classroom");
 const HttpError = require("../models/http-error");
+const student = require("../models/student");
 const classroomExists = require("./classrooms-controller").classroomExists;
 let ObjectId = require("mongoose").Types.ObjectId;
 
@@ -107,7 +108,35 @@ async function addClassroomToStudent(req, res, next) {
 }
 
 async function deleteStudent(req, res, next) {
-
+  const studentId = req.params.id;
+  let studentExist = await studentExists(studentId);
+  if (!studentExist) {
+    return next(new HttpError("L'étudiant en question n'éxiste pas", 404));
+  } else {
+    try {
+      await Classroom.updateMany(
+        { studentIds: studentId },
+        { $pull: { studentIds: studentId } }
+      );
+      try {
+        await Student.deleteOne({ _id: studentId });
+        res.status(201).json({ message: "L'étudiant a bien été supprimé" });
+      } catch (err) {
+        console.log(err);
+        return next(
+          new HttpError("Erreur lors de la suppression de l'étudiant", 500)
+        );
+      }
+    } catch (err) {
+      console.log(err);
+      return next(
+        new HttpError(
+          "Erreur lors de la suppression de l'étudiant dans les listes des cours auxquels il est inscrit",
+          500
+        )
+      );
+    }
+  }
 }
 
 //Usage functions
@@ -124,7 +153,7 @@ module.exports = {
   getStudent: getStudent,
   modifyStudent: modifyStudent,
   addClassroomToStudent: addClassroomToStudent,
-  deleteStudent: deleteStudent
+  deleteStudent: deleteStudent,
 };
 /**const studentSchema = new Schema({
   firstName: { type: String, required: true },
