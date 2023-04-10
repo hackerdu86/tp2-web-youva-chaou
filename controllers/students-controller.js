@@ -2,6 +2,8 @@ const Student = require("../models/student");
 const HttpError = require("../models/http-error");
 const { add } = require("nodemon/lib/rules");
 const classroomExists = require("./classrooms-controller").classroomExists;
+let ObjectId = require("mongoose").Types.ObjectId;
+
 
 async function addStudent(req, res, next) {
   const { firstName, lastName } = req.body;
@@ -58,7 +60,7 @@ async function modifyStudent(req, res, next) {
       .json({ modified: true });
     } catch {
       return next(
-        new HttpErreur("Erreur lors de la mise à jour de l'étudiant", 500)
+        new HttpError("Erreur lors de la mise à jour de l'étudiant", 500)
       );
     }
   }
@@ -68,8 +70,11 @@ async function addClassroomToStudent(req, res, next) {}
 
 //Usage functions
 async function studentExists(studentId) {
-  let exists = await Student.exists({ _id: studentId });
-  return exists;
+    let exists = false;
+    if (ObjectId.isValid(studentId)) {
+      exists = await Student.exists({ _id: studentId });
+    }
+    return exists;
 }
 
 module.exports = {

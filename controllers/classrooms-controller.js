@@ -3,12 +3,24 @@ const teacherController = require("../controllers/teachers-controller");
 const Classroom = require("../models/classroom");
 const Student = require("../models/student");
 const Teacher = require("../models/teacher");
+let ObjectId = require("mongoose").Types.ObjectId;
 
 //Controllers
 async function addClassroom(req, res, next) {
   const { title, discipline, teacherId } = req.body;
-  let teacherExists = await teacherController.teacherExists(teacherId);
-  if (!teacherExists) {
+  let teacherExist = false;
+  try {
+    teacherExist = await teacherController.teacherExists(teacherId);
+  } catch (err) {
+    console.log(err);
+    return next(
+      new HttpError(
+        "Erreur lors de la vérification de l'existance d'un professeur",
+        500
+      )
+    );
+  }
+  if (!teacherExist) {
     return next(new HttpError("Le professeur n'existe pas", 404));
   } else {
     try {
@@ -20,11 +32,7 @@ async function addClassroom(req, res, next) {
       });
       await classroomToAdd.save();
       try {
-        let teacher = await Teacher.findOneAndUpdate(
-          { _id: teacherId },
-          { $push: { teachedClassroomIds: classroomToAdd.id } }
-        );
-        teacher.teachedClassroomIds.push(classroomToAdd._id);
+        await Teacher.findOneAndUpdate({_id: teacherId}, {$push: {teachedClassroomIds: classroomToAdd._id}});
       } catch (err) {
         console.log(err);
         return next(
@@ -34,7 +42,6 @@ async function addClassroom(req, res, next) {
           )
         );
       }
-
       res
         .status(201)
         .json({ classe: classroomToAdd.toObject({ getters: true }) });
@@ -77,69 +84,76 @@ async function modifyClassroom(req, res, next) {
       await classroom.save();
       res.status(201).json({ modified: true });
     } catch {
-      return next(
-        new HttpErreur("Erreur lors de la mise à jour du cours", 500)
-      );
+      return next(new HttpError("Erreur lors de la mise à jour du cours", 500));
     }
   }
 }
 
 async function deleteClassroom(req, res, next) {
   const classroomId = req.params.id;
-  let classroomExist = await classroomExists(classroomId);
-
+  let classroomExist = false;
+  try {
+    classroomExist = await classroomExists(classroomId);
+  } catch (err) {
+    console.log(err);
+    return next(
+      new HttpError(
+        "Erreur lors de la vérification de l'existance du professeur du cours",
+        500
+      )
+    );
+  }
   if (!classroomExist) {
     return next(new HttpError("Le cours en question n'existe pas", 204));
   } else {
     try {
       let classroomTeacherId = await Classroom.findById(classroomId);
-      classroomTeacherId = classroomTeacherId.id;
-      Classroom.deleteOne({ _id: classroomId });
+      classroomTeacherId = classroomTeacherId.teacherId;
+      console.log(classroomTeacherId);
+      await Classroom.deleteOne({ _id: classroomId });
       try {
-        let classroomTeacher = await Teacher.findById(classroomTeacherId);
-        classroomTeacher.teachedClassroomIds = classroomTeacher.teachedClassroomIds.filter((id) => {
-          return id !== classroomId;
-        });
-        classroomTeacher.save();
+        await Teacher.findOneAndUpdate({_id: classroomTeacherId}, {$pull: {teachedClassroomIds: classroomId}});
       } catch (err) {
-        new HttpError(
-          "Erreur lors de la récupération du professeur qui enseigne le cours",
-          500
+        return next(
+          new HttpError(
+            "Erreur lors de la modification de la liste des cours du professeur qui enseigne ce cours",
+            500
+          )
         );
       }
       try {
-        let registeredStudents = await Student.find({
-          registeredClassroomIds: { $in: { classroomId } },
-        });
-        registeredStudents.registeredClassroomIds =
-          classroomTeacher.teachedClassroomIds.filter((classroomIds) => {
-            return classroomIds !== classroomId;
-          });
-        registeredStudents.save();
+        await Student.updateMany({registeredClassroomIds: classroomId}, {$pull: {registeredClassroomIds: classroomId}});
       } catch (err) {
         console.log(err);
-        new HttpError(
-          "Erreur lors des étudiants qui sont inscrits à ce courss",
-          500
+        return next(
+          new HttpError(
+            "Erreur lors de la suppression du cours chez les étudiants qui sont inscrits à celui-ci",
+            500
+          )
         );
       }
       res.status(200).json({ message: "Cours supprimé" });
     } catch (err) {
       console.log(err);
-      new HttpError("Erreur lors de la suppression du cours", 500);
+      return next(new HttpError("Erreur lors de la suppression du cours", 500));
     }
   }
 }
 
 //Usage functions
-async function classroomExists(classroomID) {
-  let exists = await Classroom.exists({ _id: classroomID });
+async function classroomExists(classroomId) {
+  let exists = false;
+  if (ObjectId.isValid(classroomId)) {
+    exists = await Classroom.exists({ _id: classroomId });
+  }
   return exists;
 }
+
 
 module.exports = {
   addClassroom: addClassroom,
   getClassroom: getClassroom,
   modifyClassroom: modifyClassroom,
   deleteClassroom: deleteClassroom,
+  classroomExists: classroomExists
 };
