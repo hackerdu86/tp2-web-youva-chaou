@@ -1,9 +1,8 @@
 const Student = require("../models/student");
+const Classroom = require("../models/classroom");
 const HttpError = require("../models/http-error");
-const { add } = require("nodemon/lib/rules");
 const classroomExists = require("./classrooms-controller").classroomExists;
 let ObjectId = require("mongoose").Types.ObjectId;
-
 
 async function addStudent(req, res, next) {
   const { firstName, lastName } = req.body;
@@ -55,9 +54,7 @@ async function modifyStudent(req, res, next) {
       student.firstName = firstName;
       student.lastName = lastName;
       await student.save();
-      res
-      .status(201)
-      .json({ modified: true });
+      res.status(201).json({ modified: true });
     } catch {
       return next(
         new HttpError("Erreur lors de la mise à jour de l'étudiant", 500)
@@ -66,15 +63,60 @@ async function modifyStudent(req, res, next) {
   }
 }
 
-async function addClassroomToStudent(req, res, next) {}
+async function addClassroomToStudent(req, res, next) {
+  const { studentId, classroomId } = req.params;
+  let studentExist = await studentExists(studentId);
+  let classroomExist = await classroomExists(classroomId);
+  if (!studentExist) {
+    return next(new HttpError("L'étudiant en question n'existe pas", 404));
+  } else if (!classroomExist) {
+    return next(new HttpError("Le cours en question n'existe pas", 404));
+  } else {
+    try {
+      await Student.findOneAndUpdate(
+        { _id: studentId },
+        { $push: { registeredClassroomIds: classroomId } }
+      );
+      try {
+        await Classroom.findOneAndUpdate(
+          { _id: classroomId },
+          { $push: { studentIds: studentId } }
+        );
+        res
+          .status(201)
+          .json({ message: "L'étudiant a bien été inscrit au cours" });
+      } catch (err) {
+        console.log(err);
+        return next(
+          new HttpError(
+            "Erreur lors de l'ajout de l'étudiant à la liste des étudiants inscrit au cours"
+          ),
+          500
+        );
+      }
+    } catch (err) {
+      console.log(err);
+      return next(
+        new HttpError(
+          "Erreur lors de l'ajout du cours à la liste des cours auxquels l'étudiant est inscrit"
+        ),
+        500
+      );
+    }
+  }
+}
+
+async function deleteStudent(req, res, next) {
+
+}
 
 //Usage functions
 async function studentExists(studentId) {
-    let exists = false;
-    if (ObjectId.isValid(studentId)) {
-      exists = await Student.exists({ _id: studentId });
-    }
-    return exists;
+  let exists = false;
+  if (ObjectId.isValid(studentId)) {
+    exists = await Student.exists({ _id: studentId });
+  }
+  return exists;
 }
 
 module.exports = {
@@ -82,6 +124,7 @@ module.exports = {
   getStudent: getStudent,
   modifyStudent: modifyStudent,
   addClassroomToStudent: addClassroomToStudent,
+  deleteStudent: deleteStudent
 };
 /**const studentSchema = new Schema({
   firstName: { type: String, required: true },

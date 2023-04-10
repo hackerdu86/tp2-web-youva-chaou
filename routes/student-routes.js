@@ -11,6 +11,8 @@ router.get("/:id", studentController.getStudent);
 
 router.patch("/:id", studentController.modifyStudent)
 
-router.patch("/cours/:id", studentController.addClassroomToStudent);
+router.patch("/:studentId/cours/:classroomId", studentController.addClassroomToStudent);
+
+router.delete("/:id", studentController.deleteStudent);
 
 module.exports = router;

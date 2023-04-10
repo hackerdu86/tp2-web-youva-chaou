@@ -1,4 +1,5 @@
 const Teacher = require("../models/teacher");
+const Classroom = require("../models/classroom");
 const HttpError = require("../models/http-error");
 const teacher = require("../models/teacher");
 const classroomsController = require("./classrooms-controller");
@@ -65,6 +66,62 @@ async function modifyTeacher(req, res, next) {
   }
 }
 
+async function addClassroomToTeacher(req, res, next) {
+  const teacherId = req.params.id;
+  let teacherExist = await teacherExists(teacherId);
+  if (!teacherExist) {
+    return next(new HttpError("Le professeur n'existe pas", 404));
+  } else {
+    try {
+      const { title, discipline } = req.body;
+      try {
+        const classroomToAdd = new Classroom({
+          title: title,
+          discipline: discipline,
+          teacherId: teacherId,
+          studentIds: [],
+        });
+        await classroomToAdd.save();
+        try {
+          await Teacher.findOneAndUpdate(
+            { _id: teacherId },
+            { $push: { teachedClassroomIds: classroomToAdd._id } }
+          );
+        } catch (err) {
+          console.log(err);
+          return next(
+            new HttpError(
+              "Erreur lors de l'ajout du cours à la liste du professeur",
+              500
+            )
+          );
+        }
+      } catch (err) {
+        console.log(err);
+        return next(
+          new HttpError("Erreur lors de la création du nouveau cours", 500)
+        );
+      }
+      res
+        .status(200)
+        .json({
+          message:
+            "Cours créé et ajouté à la liste des cours enseigné du professeur",
+        });
+    } catch (err) {
+      console.log(err);
+      return next(
+        new HttpError(
+          "Les champs pour créer un nouveau cours ne sont pas remplis",
+          500
+        )
+      );
+    }
+  }
+}
+
+async function deleteTeacher(req, res, next) {}
+
 //Usage functions
 async function teacherExists(teacherId) {
   let exists = false;
@@ -79,4 +136,6 @@ module.exports = {
   addTeacher: addTeacher,
   getTeacher: getTeacher,
   modifyTeacher: modifyTeacher,
+  addClassroomToTeacher: addClassroomToTeacher,
+  deleteTeacher: deleteTeacher,
 };
