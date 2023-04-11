@@ -1,7 +1,6 @@
 const Student = require("../models/student");
 const Classroom = require("../models/classroom");
 const HttpError = require("../models/http-error");
-const student = require("../models/student");
 const classroomExists = require("./classrooms-controller").classroomExists;
 let ObjectId = require("mongoose").Types.ObjectId;
 

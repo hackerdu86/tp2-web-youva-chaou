@@ -165,7 +165,7 @@ async function deleteTeacher(req, res, next) {
       console.log(err);
       return next(
         new HttpError(
-          "Erreur lors de la suppression des cours dans les listes des étudiants au moins un des cours donné par ce professeur",
+          "Erreur lors de la suppression des cours dans les listes des étudiants qui est inscrit a au moins un des cours donné par ce professeur",
           500
         )
       );
